@@ -25,7 +25,8 @@ func (h *Handler) GetInboundClients(ctx *gin.Context) {
 
 func (h *Handler) AddInboundClient(ctx *gin.Context) {
 	//	Получаем ID
-	id := ctx.Param("id")
+	//id := ctx.Param("id")
+	id := 2
 	inboundId, err := strconv.Atoi(id)
 	if err != nil {
 		ctx.JSON(400, gin.H{"error": "Invalid inbound ID"})

@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	P                 *xray.Process
+	p                 *xray.Process
 	lock              sync.Mutex
 	isNeedXrayRestart atomic.Bool
 	result            string
@@ -25,14 +25,14 @@ type XrayService struct {
 }
 
 func (s *XrayService) IsXrayRunning() bool {
-	return P != nil && P.IsRunning()
+	return p != nil && p.IsRunning()
 }
 
 func (s *XrayService) GetXrayErr() error {
-	if P == nil {
+	if p == nil {
 		return nil
 	}
-	return P.GetErr()
+	return p.GetErr()
 }
 
 func (s *XrayService) GetXrayResult() string {
@@ -42,18 +42,18 @@ func (s *XrayService) GetXrayResult() string {
 	if s.IsXrayRunning() {
 		return ""
 	}
-	if P == nil {
+	if p == nil {
 		return ""
 	}
-	result = P.GetResult()
+	result = p.GetResult()
 	return result
 }
 
 func (s *XrayService) GetXrayVersion() string {
-	if P == nil {
+	if p == nil {
 		return "Unknown"
 	}
-	return P.GetVersion()
+	return p.GetVersion()
 }
 
 func RemoveIndex(s []interface{}, index int) []interface{} {
@@ -97,7 +97,7 @@ func (s *XrayService) GetXrayConfig() (*xray.Config, error) {
 						if !clientTraffic.Enable {
 							clients = RemoveIndex(clients, index-indexDecrease)
 							indexDecrease++
-							logger.Info("Remove Inbound User ", c["email"], " due the expire or traffic limit")
+							logger.Infof("Remove Inbound User %s due to expiration or traffic limit", c["email"])
 						}
 					}
 				}
@@ -165,11 +165,20 @@ func (s *XrayService) GetXrayConfig() (*xray.Config, error) {
 
 func (s *XrayService) GetXrayTraffic() ([]*xray.Traffic, []*xray.ClientTraffic, error) {
 	if !s.IsXrayRunning() {
-		return nil, nil, errors.New("xray is not running")
+		err := errors.New("xray is not running")
+		logger.Debug("Attempted to fetch Xray traffic, but Xray is not running:", err)
+		return nil, nil, err
 	}
-	s.xrayAPI.Init(P.GetAPIPort())
+	apiPort := p.GetAPIPort()
+	s.xrayAPI.Init(apiPort)
 	defer s.xrayAPI.Close()
-	return s.xrayAPI.GetTraffic(true)
+
+	traffic, clientTraffic, err := s.xrayAPI.GetTraffic(true)
+	if err != nil {
+		logger.Debug("Failed to fetch Xray traffic:", err)
+		return nil, nil, err
+	}
+	return traffic, clientTraffic, nil
 }
 
 func (s *XrayService) RestartXray(isForce bool) error {
@@ -183,16 +192,16 @@ func (s *XrayService) RestartXray(isForce bool) error {
 	}
 
 	if s.IsXrayRunning() {
-		if !isForce && P.GetConfig().Equals(xrayConfig) {
+		if !isForce && p.GetConfig().Equals(xrayConfig) {
 			logger.Debug("It does not need to restart xray")
 			return nil
 		}
-		P.Stop()
+		p.Stop()
 	}
 
-	P = xray.NewProcess(xrayConfig)
+	p = xray.NewProcess(xrayConfig)
 	result = ""
-	err = P.Start()
+	err = p.Start()
 	if err != nil {
 		return err
 	}
@@ -202,9 +211,9 @@ func (s *XrayService) RestartXray(isForce bool) error {
 func (s *XrayService) StopXray() error {
 	lock.Lock()
 	defer lock.Unlock()
-	logger.Debug("stop xray")
+	logger.Debug("Attempting to stop Xray...")
 	if s.IsXrayRunning() {
-		return P.Stop()
+		return p.Stop()
 	}
 	return errors.New("xray is not running")
 }

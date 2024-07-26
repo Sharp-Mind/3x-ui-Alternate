@@ -27,7 +27,7 @@
 ## Install & Upgrade
 
 ```
-bash <(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh)
+bash <(curl -Ls https://raw.githubusercontent.com/Sharp-Mind/3x-ui-alternate/master/install.sh)
 ```
 
 ## Install Custom Version

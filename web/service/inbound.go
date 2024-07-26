@@ -213,7 +213,7 @@ func (s *InboundService) AddInbound(inbound *model.Inbound) (*model.Inbound, boo
 
 	needRestart := false
 	if inbound.Enable {
-		s.xrayApi.Init(p.GetAPIPort())
+		s.xrayApi.Init(P.GetAPIPort())
 		inboundJson, err1 := json.MarshalIndent(inbound.GenXrayInboundConfig(), "", "  ")
 		if err1 != nil {
 			logger.Debug("Unable to marshal inbound config:", err1)
@@ -239,7 +239,7 @@ func (s *InboundService) DelInbound(id int) (bool, error) {
 	needRestart := false
 	result := db.Model(model.Inbound{}).Select("tag").Where("id = ? and enable = ?", id, true).First(&tag)
 	if result.Error == nil {
-		s.xrayApi.Init(p.GetAPIPort())
+		s.xrayApi.Init(P.GetAPIPort())
 		err1 := s.xrayApi.DelInbound(tag)
 		if err1 == nil {
 			logger.Debug("Inbound deleted by api:", tag)
@@ -336,7 +336,7 @@ func (s *InboundService) UpdateInbound(inbound *model.Inbound) (*model.Inbound, 
 	}
 
 	needRestart := false
-	s.xrayApi.Init(p.GetAPIPort())
+	s.xrayApi.Init(P.GetAPIPort())
 	if s.xrayApi.DelInbound(tag) == nil {
 		logger.Debug("Old inbound deleted by api:", tag)
 	}
@@ -478,7 +478,7 @@ func (s *InboundService) AddInboundClient(data *model.Inbound) (bool, error) {
 	}()
 
 	needRestart := false
-	s.xrayApi.Init(p.GetAPIPort())
+	s.xrayApi.Init(P.GetAPIPort())
 	for _, client := range clients {
 		if len(client.Email) > 0 {
 			s.AddClientStat(tx, data.Id, &client)
@@ -569,7 +569,7 @@ func (s *InboundService) DelInboundClient(inboundId int, clientId string) (bool,
 	}
 	needRestart := false
 	if len(email) > 0 {
-		s.xrayApi.Init(p.GetAPIPort())
+		s.xrayApi.Init(P.GetAPIPort())
 		err1 := s.xrayApi.RemoveUser(oldInbound.Tag, email)
 		if err1 == nil {
 			logger.Debug("Client deleted by api:", email)
@@ -595,7 +595,7 @@ func (s *InboundService) UpdateInboundClient(data *model.Inbound, clientId strin
 		return false, err
 	}
 
-	interfaceClients := settings["clients"].([]interface{})
+	inerfaceClients := settings["clients"].([]interface{})
 
 	oldInbound, err := s.GetInbound(data.Id)
 	if err != nil {
@@ -650,7 +650,7 @@ func (s *InboundService) UpdateInboundClient(data *model.Inbound, clientId strin
 		return false, err
 	}
 	settingsClients := oldSettings["clients"].([]interface{})
-	settingsClients[clientIndex] = interfaceClients[0]
+	settingsClients[clientIndex] = inerfaceClients[0]
 	oldSettings["clients"] = settingsClients
 
 	newSettings, err := json.MarshalIndent(oldSettings, "", "  ")
@@ -695,7 +695,7 @@ func (s *InboundService) UpdateInboundClient(data *model.Inbound, clientId strin
 	}
 	needRestart := false
 	if len(oldEmail) > 0 {
-		s.xrayApi.Init(p.GetAPIPort())
+		s.xrayApi.Init(P.GetAPIPort())
 		err1 := s.xrayApi.RemoveUser(oldInbound.Tag, oldEmail)
 		if err1 == nil {
 			logger.Debug("Old client deleted by api:", clients[0].Email)
@@ -799,8 +799,8 @@ func (s *InboundService) addInboundTraffic(tx *gorm.DB, traffics []*xray.Traffic
 func (s *InboundService) addClientTraffic(tx *gorm.DB, traffics []*xray.ClientTraffic) (err error) {
 	if len(traffics) == 0 {
 		// Empty onlineUsers
-		if p != nil {
-			p.SetOnlineClients(nil)
+		if P != nil {
+			P.SetOnlineClients(nil)
 		}
 		return nil
 	}
@@ -843,7 +843,7 @@ func (s *InboundService) addClientTraffic(tx *gorm.DB, traffics []*xray.ClientTr
 	}
 
 	// Set onlineUsers
-	p.SetOnlineClients(onlineClients)
+	P.SetOnlineClients(onlineClients)
 
 	err = tx.Save(dbClientTraffics).Error
 	if err != nil {
@@ -985,8 +985,8 @@ func (s *InboundService) autoRenewClients(tx *gorm.DB) (bool, int64, error) {
 	if err != nil {
 		return false, 0, err
 	}
-	if p != nil {
-		err1 = s.xrayApi.Init(p.GetAPIPort())
+	if P != nil {
+		err1 = s.xrayApi.Init(P.GetAPIPort())
 		if err1 != nil {
 			return true, int64(len(traffics)), nil
 		}
@@ -1005,7 +1005,7 @@ func (s *InboundService) disableInvalidInbounds(tx *gorm.DB) (bool, int64, error
 	now := time.Now().Unix() * 1000
 	needRestart := false
 
-	if p != nil {
+	if P != nil {
 		var tags []string
 		err := tx.Table("inbounds").
 			Select("inbounds.tag").
@@ -1014,7 +1014,7 @@ func (s *InboundService) disableInvalidInbounds(tx *gorm.DB) (bool, int64, error
 		if err != nil {
 			return false, 0, err
 		}
-		s.xrayApi.Init(p.GetAPIPort())
+		s.xrayApi.Init(P.GetAPIPort())
 		for _, tag := range tags {
 			err1 := s.xrayApi.DelInbound(tag)
 			if err1 == nil {
@@ -1039,7 +1039,7 @@ func (s *InboundService) disableInvalidClients(tx *gorm.DB) (bool, int64, error)
 	now := time.Now().Unix() * 1000
 	needRestart := false
 
-	if p != nil {
+	if P != nil {
 		var results []struct {
 			Tag   string
 			Email string
@@ -1053,7 +1053,7 @@ func (s *InboundService) disableInvalidClients(tx *gorm.DB) (bool, int64, error)
 		if err != nil {
 			return false, 0, err
 		}
-		s.xrayApi.Init(p.GetAPIPort())
+		s.xrayApi.Init(P.GetAPIPort())
 		for _, result := range results {
 			err1 := s.xrayApi.RemoveUser(result.Tag, result.Email)
 			if err1 == nil {
@@ -1134,6 +1134,7 @@ func (s *InboundService) DelClientStat(tx *gorm.DB, email string) error {
 }
 
 func (s *InboundService) DelClientIPs(tx *gorm.DB, email string) error {
+	logger.Warning(email)
 	return tx.Where("client_email = ?", email).Delete(model.InboundClientIps{}).Error
 }
 
@@ -1142,7 +1143,7 @@ func (s *InboundService) GetClientInboundByTrafficID(trafficId int) (traffic *xr
 	var traffics []*xray.ClientTraffic
 	err = db.Model(xray.ClientTraffic{}).Where("id = ?", trafficId).Find(&traffics).Error
 	if err != nil {
-		logger.Warningf("Error retrieving ClientTraffic with trafficId %d: %v", trafficId, err)
+		logger.Warning(err)
 		return nil, nil, err
 	}
 	if len(traffics) > 0 {
@@ -1157,7 +1158,7 @@ func (s *InboundService) GetClientInboundByEmail(email string) (traffic *xray.Cl
 	var traffics []*xray.ClientTraffic
 	err = db.Model(xray.ClientTraffic{}).Where("email = ?", email).Find(&traffics).Error
 	if err != nil {
-		logger.Warningf("Error retrieving ClientTraffic with email %s: %v", email, err)
+		logger.Warning(err)
 		return nil, nil, err
 	}
 	if len(traffics) > 0 {
@@ -1546,7 +1547,7 @@ func (s *InboundService) ResetClientTraffic(id int, clientEmail string) (bool, e
 		}
 		for _, client := range clients {
 			if client.Email == clientEmail {
-				s.xrayApi.Init(p.GetAPIPort())
+				s.xrayApi.Init(P.GetAPIPort())
 				cipher := ""
 				if string(inbound.Protocol) == "shadowsocks" {
 					var oldSettings map[string]interface{}
@@ -1698,20 +1699,15 @@ func (s *InboundService) DelDepletedClients(id int) (err error) {
 func (s *InboundService) GetClientTrafficTgBot(tgId int64) ([]*xray.ClientTraffic, error) {
 	db := database.GetDB()
 	var inbounds []*model.Inbound
-
-	// Retrieve inbounds where settings contain the given tgId
-	err := db.Model(model.Inbound{}).Where("settings LIKE ?", fmt.Sprintf(`%%"tgId": %d%%`, tgId)).Find(&inbounds).Error
+	err := db.Model(model.Inbound{}).Where("settings like ?", fmt.Sprintf(`%%"tgId": %d%%`, tgId)).Find(&inbounds).Error
 	if err != nil && err != gorm.ErrRecordNotFound {
-		logger.Errorf("Error retrieving inbounds with tgId %d: %v", tgId, err)
 		return nil, err
 	}
-
 	var emails []string
 	for _, inbound := range inbounds {
 		clients, err := s.GetClients(inbound)
 		if err != nil {
-			logger.Errorf("Error retrieving clients for inbound %d: %v", inbound.Id, err)
-			continue
+			logger.Error("Unable to get clients from inbound")
 		}
 		for _, client := range clients {
 			if client.TgID == tgId {
@@ -1719,19 +1715,15 @@ func (s *InboundService) GetClientTrafficTgBot(tgId int64) ([]*xray.ClientTraffi
 			}
 		}
 	}
-
 	var traffics []*xray.ClientTraffic
 	err = db.Model(xray.ClientTraffic{}).Where("email IN ?", emails).Find(&traffics).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			logger.Warning("No ClientTraffic records found for emails:", emails)
-			return nil, nil
+			logger.Warning(err)
+			return nil, err
 		}
-		logger.Errorf("Error retrieving ClientTraffic for emails %v: %v", emails, err)
-		return nil, err
 	}
-
-	return traffics, nil
+	return traffics, err
 }
 
 func (s *InboundService) GetClientTrafficByEmail(email string) (traffic *xray.ClientTraffic, err error) {
@@ -1740,7 +1732,7 @@ func (s *InboundService) GetClientTrafficByEmail(email string) (traffic *xray.Cl
 
 	err = db.Model(xray.ClientTraffic{}).Where("email = ?", email).Find(&traffics).Error
 	if err != nil {
-		logger.Warningf("Error retrieving ClientTraffic with email %s: %v", email, err)
+		logger.Warning(err)
 		return nil, err
 	}
 	if len(traffics) > 0 {
@@ -1750,75 +1742,43 @@ func (s *InboundService) GetClientTrafficByEmail(email string) (traffic *xray.Cl
 	return nil, nil
 }
 
-func (s *InboundService) GetClientTrafficByID(id string) ([]xray.ClientTraffic, error) {
-	db := database.GetDB()
-	var traffics []xray.ClientTraffic
-
-	err := db.Model(xray.ClientTraffic{}).Where(`email IN(
-		SELECT JSON_EXTRACT(client.value, '$.email') as email
-		FROM inbounds,
-	  	JSON_EACH(JSON_EXTRACT(inbounds.settings, '$.clients')) AS client
-		WHERE
-	  	JSON_EXTRACT(client.value, '$.id') in (?)
-		)`, id).Find(&traffics).Error
-
-	if err != nil {
-		logger.Debug(err)
-		return nil, err
-	}
-	return traffics, err
-}
-
 func (s *InboundService) SearchClientTraffic(query string) (traffic *xray.ClientTraffic, err error) {
 	db := database.GetDB()
 	inbound := &model.Inbound{}
 	traffic = &xray.ClientTraffic{}
 
-	// Search for inbound settings that contain the query
-	err = db.Model(model.Inbound{}).Where("settings LIKE ?", "%\""+query+"\"%").First(inbound).Error
+	err = db.Model(model.Inbound{}).Where("settings like ?", "%\""+query+"\"%").First(inbound).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			logger.Warningf("Inbound settings containing query %s not found: %v", query, err)
+			logger.Warning(err)
 			return nil, err
 		}
-		logger.Errorf("Error searching for inbound settings with query %s: %v", query, err)
-		return nil, err
 	}
-
 	traffic.InboundId = inbound.Id
 
-	// Unmarshal settings to get clients
+	// get settings clients
 	settings := map[string][]model.Client{}
-	if err := json.Unmarshal([]byte(inbound.Settings), &settings); err != nil {
-		logger.Errorf("Error unmarshalling inbound settings for inbound ID %d: %v", inbound.Id, err)
-		return nil, err
-	}
-
+	json.Unmarshal([]byte(inbound.Settings), &settings)
 	clients := settings["clients"]
 	for _, client := range clients {
-		if (client.ID == query || client.Password == query) && client.Email != "" {
+		if client.ID == query && client.Email != "" {
+			traffic.Email = client.Email
+			break
+		}
+		if client.Password == query && client.Email != "" {
 			traffic.Email = client.Email
 			break
 		}
 	}
-
 	if traffic.Email == "" {
-		logger.Warningf("No client found with query %s in inbound ID %d", query, inbound.Id)
-		return nil, gorm.ErrRecordNotFound
-	}
-
-	// Retrieve ClientTraffic based on the found email
-	err = db.Model(xray.ClientTraffic{}).Where("email = ?", traffic.Email).First(traffic).Error
-	if err != nil {
-		if err == gorm.ErrRecordNotFound {
-			logger.Warningf("ClientTraffic for email %s not found: %v", traffic.Email, err)
-			return nil, err
-		}
-		logger.Errorf("Error retrieving ClientTraffic for email %s: %v", traffic.Email, err)
 		return nil, err
 	}
-
-	return traffic, nil
+	err = db.Model(xray.ClientTraffic{}).Where("email = ?", traffic.Email).First(traffic).Error
+	if err != nil {
+		logger.Warning(err)
+		return nil, err
+	}
+	return traffic, err
 }
 
 func (s *InboundService) GetInboundClientIps(clientEmail string) (string, error) {
@@ -1988,6 +1948,6 @@ func (s *InboundService) MigrateDB() {
 	s.MigrationRemoveOrphanedTraffics()
 }
 
-func (s *InboundService) GetOnlineClients() []string {
-	return p.GetOnlineClients()
+func (s *InboundService) GetOnlineClinets() []string {
+	return P.GetOnlineClients()
 }

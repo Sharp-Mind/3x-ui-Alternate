@@ -33,7 +33,6 @@ func (a *APIController) initRouter(g *gin.RouterGroup) {
 		{"GET", "/list", a.inboundController.getInbounds},
 		{"GET", "/get/:id", a.inboundController.getInbound},
 		{"GET", "/getClientTraffics/:email", a.inboundController.getClientTraffics},
-		{"GET", "/getClientTrafficsById/:id", a.inboundController.getClientTrafficsById},
 		{"POST", "/add", a.inboundController.addInbound},
 		{"POST", "/del/:id", a.inboundController.delInbound},
 		{"POST", "/update/:id", a.inboundController.updateInbound},

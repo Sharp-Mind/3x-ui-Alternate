@@ -77,16 +77,6 @@ func (a *InboundController) getClientTraffics(c *gin.Context) {
 	jsonObj(c, clientTraffics, nil)
 }
 
-func (a *InboundController) getClientTrafficsById(c *gin.Context) {
-	id := c.Param("id")
-	clientTraffics, err := a.inboundService.GetClientTrafficByID(id)
-	if err != nil {
-		jsonMsg(c, "Error getting traffics", err)
-		return
-	}
-	jsonObj(c, clientTraffics, nil)
-}
-
 func (a *InboundController) addInbound(c *gin.Context) {
 	inbound := &model.Inbound{}
 	err := c.ShouldBind(inbound)
@@ -242,12 +232,14 @@ func (a *InboundController) resetClientTraffic(c *gin.Context) {
 	}
 	email := c.Param("email")
 
-	needRestart, err := a.inboundService.ResetClientTraffic(id, email)
+	needRestart := true
+
+	needRestart, err = a.inboundService.ResetClientTraffic(id, email)
 	if err != nil {
 		jsonMsg(c, "Something went wrong!", err)
 		return
 	}
-	jsonMsg(c, "Traffic has been reset", nil)
+	jsonMsg(c, "traffic reseted", nil)
 	if needRestart {
 		a.xrayService.SetToNeedRestart()
 	}
@@ -261,7 +253,7 @@ func (a *InboundController) resetAllTraffics(c *gin.Context) {
 	} else {
 		a.xrayService.SetToNeedRestart()
 	}
-	jsonMsg(c, "all traffic has been reset", nil)
+	jsonMsg(c, "All traffics reseted", nil)
 }
 
 func (a *InboundController) resetAllClientTraffics(c *gin.Context) {
@@ -278,7 +270,7 @@ func (a *InboundController) resetAllClientTraffics(c *gin.Context) {
 	} else {
 		a.xrayService.SetToNeedRestart()
 	}
-	jsonMsg(c, "All traffic from the client has been reset.", nil)
+	jsonMsg(c, "All traffics of client reseted", nil)
 }
 
 func (a *InboundController) importInbound(c *gin.Context) {
@@ -321,9 +313,9 @@ func (a *InboundController) delDepletedClients(c *gin.Context) {
 		jsonMsg(c, "Something went wrong!", err)
 		return
 	}
-	jsonMsg(c, "All depleted clients are deleted", nil)
+	jsonMsg(c, "All delpeted clients are deleted", nil)
 }
 
 func (a *InboundController) onlines(c *gin.Context) {
-	jsonObj(c, a.inboundService.GetOnlineClients(), nil)
+	jsonObj(c, a.inboundService.GetOnlineClinets(), nil)
 }

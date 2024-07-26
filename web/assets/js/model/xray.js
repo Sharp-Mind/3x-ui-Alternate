@@ -523,7 +523,7 @@ class HTTPUpgradeStreamSettings extends XrayCommonClass {
 }
 
 class SplitHTTPStreamSettings extends XrayCommonClass {
-    constructor(path='/', host='', headers=[] , maxUploadSize= 1000000, maxConcurrentUploads= 10) {
+    constructor(path='/', host='', headers=[] , maxUploadSize= 1, maxConcurrentUploads= 10) {
         super();
         this.path = path;
         this.host = host;
@@ -570,7 +570,7 @@ class TlsStreamSettings extends XrayCommonClass {
                 disableSystemRoot = false,
                 enableSessionResumption = false,
                 certificates=[new TlsStreamSettings.Cert()],
-                alpn=[ALPN_OPTION.H3,ALPN_OPTION.H2,ALPN_OPTION.HTTP1],
+                alpn=[ALPN_OPTION.H2,ALPN_OPTION.HTTP1],
                 settings=new TlsStreamSettings.Settings()) {
         super();
         this.sni = serverName;
@@ -712,7 +712,7 @@ TlsStreamSettings.Settings = class extends XrayCommonClass {
 class XtlsStreamSettings extends XrayCommonClass {
     constructor(serverName='',
                 certificates=[new XtlsStreamSettings.Cert()],
-                alpn=[ALPN_OPTION.H3,ALPN_OPTION.H2,ALPN_OPTION.HTTP1],
+                alpn=[ALPN_OPTION.H2,ALPN_OPTION.HTTP1],
                 settings=new XtlsStreamSettings.Settings()) {
         super();
         this.sni = serverName;
@@ -892,7 +892,7 @@ class RealityStreamSettings extends XrayCommonClass {
 }
 
 RealityStreamSettings.Settings = class extends XrayCommonClass {
-    constructor(publicKey = '', fingerprint = UTLS_FINGERPRINT.UTLS_RANDOM, serverName = '', spiderX= '/') {
+    constructor(publicKey = '', fingerprint = UTLS_FINGERPRINT.UTLS_FIREFOX, serverName = '', spiderX= '/') {
         super();
         this.publicKey = publicKey;
         this.fingerprint = fingerprint;

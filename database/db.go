@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"io"
 	"io/fs"
-	"log"
 	"os"
 	"path"
 
@@ -12,58 +11,61 @@ import (
 	"x-ui/database/model"
 	"x-ui/xray"
 
-	"gorm.io/driver/sqlite"
+	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
 
 var db *gorm.DB
 
-const (
-	defaultUsername = "admin"
-	defaultPassword = "admin"
-	defaultSecret   = ""
-)
-
-func initModels() error {
-	models := []interface{}{
-		&model.User{},
-		&model.Inbound{},
-		&model.OutboundTraffics{},
-		&model.Setting{},
-		&model.InboundClientIps{},
-		&xray.ClientTraffic{},
-	}
-	for _, model := range models {
-		if err := db.AutoMigrate(model); err != nil {
-			log.Printf("Error auto migrating model: %v", err)
-			return err
-		}
-	}
-	return nil
+var initializers = []func() error{
+	initUser,
+	initInbound,
+	initOutbound,
+	initSetting,
+	initInboundClientIps,
+	initClientTraffic,
 }
 
 func initUser() error {
-	empty, err := isTableEmpty("users")
+	err := db.AutoMigrate(&model.User{})
 	if err != nil {
-		log.Printf("Error checking if users table is empty: %v", err)
 		return err
 	}
-	if empty {
+	var count int64
+	err = db.Model(&model.User{}).Count(&count).Error
+	if err != nil {
+		return err
+	}
+	if count == 0 {
 		user := &model.User{
-			Username:    defaultUsername,
-			Password:    defaultPassword,
-			LoginSecret: defaultSecret,
+			Username:    "admin",
+			Password:    "admin",
+			LoginSecret: "",
 		}
 		return db.Create(user).Error
 	}
 	return nil
 }
 
-func isTableEmpty(tableName string) (bool, error) {
-	var count int64
-	err := db.Table(tableName).Count(&count).Error
-	return count == 0, err
+func initInbound() error {
+	return db.AutoMigrate(&model.Inbound{})
+}
+
+func initOutbound() error {
+	return db.AutoMigrate(&model.OutboundTraffics{})
+}
+
+func initSetting() error {
+	return db.AutoMigrate(&model.Setting{})
+}
+
+func initInboundClientIps() error {
+	return db.AutoMigrate(&model.InboundClientIps{})
+}
+
+func initClientTraffic() error {
+	return db.AutoMigrate(&xray.ClientTraffic{})
 }
 
 func InitDB(dbPath string) error {
@@ -89,24 +91,12 @@ func InitDB(dbPath string) error {
 		return err
 	}
 
-	if err := initModels(); err != nil {
-		return err
-	}
-	if err := initUser(); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func CloseDB() error {
-	if db != nil {
-		sqlDB, err := db.DB()
-		if err != nil {
+	for _, initialize := range initializers {
+		if err := initialize(); err != nil {
 			return err
 		}
-		return sqlDB.Close()
 	}
+
 	return nil
 }
 

@@ -8,7 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 	_ "unsafe"
-
+	backend_api "x-ui/backend-api/cmd/app"
 	"x-ui/config"
 	"x-ui/database"
 	"x-ui/logger"
@@ -21,7 +21,7 @@ import (
 )
 
 func runWebServer() {
-	log.Printf("Starting %v %v", config.GetName(), config.GetVersion())
+	log.Printf("%v %v", config.GetName(), config.GetVersion())
 
 	switch config.GetLogLevel() {
 	case config.Debug:
@@ -35,29 +35,36 @@ func runWebServer() {
 	case config.Error:
 		logger.InitLogger(logging.ERROR)
 	default:
-		log.Fatalf("Unknown log level: %v", config.GetLogLevel())
+		log.Fatal("unknown log level:", config.GetLogLevel())
 	}
 
 	err := database.InitDB(config.GetDBPath())
+	//err := database.InitDB("./x-ui.db")
 	if err != nil {
-		log.Fatalf("Error initializing database: %v", err)
+		log.Fatal(err)
 	}
 
+	go func() {
+		backend_api.Start()
+	}()
+
 	var server *web.Server
+
 	server = web.NewServer()
 	global.SetWebServer(server)
 	err = server.Start()
 	if err != nil {
-		log.Fatalf("Error starting web server: %v", err)
+		log.Println(err)
 		return
 	}
 
 	var subServer *sub.Server
 	subServer = sub.NewServer()
 	global.SetSubServer(subServer)
+
 	err = subServer.Start()
 	if err != nil {
-		log.Fatalf("Error starting sub server: %v", err)
+		log.Println(err)
 		return
 	}
 
@@ -69,57 +76,54 @@ func runWebServer() {
 
 		switch sig {
 		case syscall.SIGHUP:
-			logger.Info("Received SIGHUP signal. Restarting servers...")
-
 			err := server.Stop()
 			if err != nil {
-				logger.Warning("Error stopping web server:", err)
+				logger.Warning("stop server err:", err)
 			}
 			err = subServer.Stop()
 			if err != nil {
-				logger.Warning("Error stopping sub server:", err)
+				logger.Warning("stop server err:", err)
 			}
 
 			server = web.NewServer()
 			global.SetWebServer(server)
 			err = server.Start()
 			if err != nil {
-				log.Fatalf("Error restarting web server: %v", err)
+				log.Println(err)
 				return
 			}
-			log.Println("Web server restarted successfully.")
 
 			subServer = sub.NewServer()
 			global.SetSubServer(subServer)
+
 			err = subServer.Start()
 			if err != nil {
-				log.Fatalf("Error restarting sub server: %v", err)
+				log.Println(err)
 				return
 			}
-			log.Println("Sub server restarted successfully.")
-
 		default:
 			server.Stop()
 			subServer.Stop()
-			log.Println("Shutting down servers.")
 			return
 		}
 	}
 }
 
 func resetSetting() {
+	logger.Info("reset setting")
 	err := database.InitDB(config.GetDBPath())
 	if err != nil {
-		fmt.Println("Failed to initialize database:", err)
+		fmt.Println(err)
 		return
 	}
+	logger.Info("init db success")
 
 	settingService := service.SettingService{}
 	err = settingService.ResetSettings()
 	if err != nil {
-		fmt.Println("Failed to reset settings:", err)
+		fmt.Println("reset setting failed:", err)
 	} else {
-		fmt.Println("Settings successfully reset.")
+		fmt.Println("reset setting success")
 	}
 }
 
@@ -162,19 +166,19 @@ func showSetting(show bool) {
 
 func updateTgbotEnableSts(status bool) {
 	settingService := service.SettingService{}
-	currentTgSts, err := settingService.GetTgbotEnabled()
+	currentTgSts, err := settingService.GetTgbotenabled()
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 	logger.Infof("current enabletgbot status[%v],need update to status[%v]", currentTgSts, status)
 	if currentTgSts != status {
-		err := settingService.SetTgbotEnabled(status)
+		err := settingService.SetTgbotenabled(status)
 		if err != nil {
 			fmt.Println(err)
 			return
 		} else {
-			logger.Infof("SetTgbotEnabled[%v] success", status)
+			logger.Infof("SetTgbotenabled[%v] success", status)
 		}
 	}
 }
@@ -182,7 +186,7 @@ func updateTgbotEnableSts(status bool) {
 func updateTgbotSetting(tgBotToken string, tgBotChatid string, tgBotRuntime string) {
 	err := database.InitDB(config.GetDBPath())
 	if err != nil {
-		fmt.Println("Error initializing database:", err)
+		fmt.Println(err)
 		return
 	}
 
@@ -191,65 +195,68 @@ func updateTgbotSetting(tgBotToken string, tgBotChatid string, tgBotRuntime stri
 	if tgBotToken != "" {
 		err := settingService.SetTgBotToken(tgBotToken)
 		if err != nil {
-			fmt.Printf("Error setting Telegram bot token: %v\n", err)
+			fmt.Println(err)
 			return
+		} else {
+			logger.Info("updateTgbotSetting tgBotToken success")
 		}
-		logger.Info("Successfully updated Telegram bot token.")
 	}
 
 	if tgBotRuntime != "" {
 		err := settingService.SetTgbotRuntime(tgBotRuntime)
 		if err != nil {
-			fmt.Printf("Error setting Telegram bot runtime: %v\n", err)
+			fmt.Println(err)
 			return
+		} else {
+			logger.Infof("updateTgbotSetting tgBotRuntime[%s] success", tgBotRuntime)
 		}
-		logger.Infof("Successfully updated Telegram bot runtime to [%s].", tgBotRuntime)
 	}
 
 	if tgBotChatid != "" {
 		err := settingService.SetTgBotChatId(tgBotChatid)
 		if err != nil {
-			fmt.Printf("Error setting Telegram bot chat ID: %v\n", err)
+			fmt.Println(err)
 			return
+		} else {
+			logger.Info("updateTgbotSetting tgBotChatid success")
 		}
-		logger.Info("Successfully updated Telegram bot chat ID.")
 	}
 }
 
 func updateSetting(port int, username string, password string, webBasePath string) {
 	err := database.InitDB(config.GetDBPath())
 	if err != nil {
-		fmt.Println("Database initialization failed:", err)
+		fmt.Println(err)
 		return
 	}
 
 	settingService := service.SettingService{}
-	userService := service.UserService{}
 
 	if port > 0 {
 		err := settingService.SetPort(port)
 		if err != nil {
-			fmt.Println("Failed to set port:", err)
+			fmt.Println("set port failed:", err)
 		} else {
-			fmt.Printf("Port set successfully: %v\n", port)
+			fmt.Printf("set port %v success", port)
 		}
 	}
 
 	if username != "" || password != "" {
+		userService := service.UserService{}
 		err := userService.UpdateFirstUser(username, password)
 		if err != nil {
-			fmt.Println("Failed to update username and password:", err)
+			fmt.Println("set username and password failed:", err)
 		} else {
-			fmt.Println("Username and password updated successfully")
+			fmt.Println("set username and password success")
 		}
 	}
 
 	if webBasePath != "" {
 		err := settingService.SetBasePath(webBasePath)
 		if err != nil {
-			fmt.Println("Failed to set base URI path:", err)
+			fmt.Println("set base URI path failed:", err)
 		} else {
-			fmt.Println("Base URI path set successfully")
+			fmt.Println("set base URI path success")
 		}
 	}
 }
@@ -348,19 +355,19 @@ func main() {
 	var reset bool
 	var show bool
 	var remove_secret bool
-	settingCmd.BoolVar(&reset, "reset", false, "Reset all settings")
-	settingCmd.BoolVar(&show, "show", false, "Display current settings")
-	settingCmd.BoolVar(&remove_secret, "remove_secret", false, "Remove secret key")
-	settingCmd.IntVar(&port, "port", 0, "Set panel port number")
-	settingCmd.StringVar(&username, "username", "", "Set login username")
-	settingCmd.StringVar(&password, "password", "", "Set login password")
-	settingCmd.StringVar(&webBasePath, "webBasePath", "", "Set base path for Panel")
-	settingCmd.StringVar(&webCertFile, "webCert", "", "Set path to public key file for panel")
-	settingCmd.StringVar(&webKeyFile, "webCertKey", "", "Set path to private key file for panel")
-	settingCmd.StringVar(&tgbottoken, "tgbottoken", "", "Set token for Telegram bot")
-	settingCmd.StringVar(&tgbotRuntime, "tgbotRuntime", "", "Set cron time for Telegram bot notifications")
-	settingCmd.StringVar(&tgbotchatid, "tgbotchatid", "", "Set chat ID for Telegram bot notifications")
-	settingCmd.BoolVar(&enabletgbot, "enabletgbot", false, "Enable notifications via Telegram bot")
+	settingCmd.BoolVar(&reset, "reset", false, "reset all settings")
+	settingCmd.BoolVar(&show, "show", false, "show current settings")
+	settingCmd.BoolVar(&remove_secret, "remove_secret", false, "remove secret")
+	settingCmd.IntVar(&port, "port", 0, "set panel port")
+	settingCmd.StringVar(&username, "username", "", "set login username")
+	settingCmd.StringVar(&password, "password", "", "set login password")
+	settingCmd.StringVar(&webBasePath, "webBasePath", "", "set web base path")
+	settingCmd.StringVar(&webCertFile, "webCert", "", "set web public key path")
+	settingCmd.StringVar(&webKeyFile, "webCertKey", "", "set web private key path")
+	settingCmd.StringVar(&tgbottoken, "tgbottoken", "", "set telegram bot token")
+	settingCmd.StringVar(&tgbotRuntime, "tgbotRuntime", "", "set telegram bot cron time")
+	settingCmd.StringVar(&tgbotchatid, "tgbotchatid", "", "set telegram bot chat id")
+	settingCmd.BoolVar(&enabletgbot, "enabletgbot", false, "enable telegram bot notify")
 
 	oldUsage := flag.Usage
 	flag.Usage = func() {

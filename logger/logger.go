@@ -18,7 +18,8 @@ var (
 )
 
 func init() {
-	InitLogger(logging.INFO)
+	InitLogger(logging.DEBUG)
+	//log.SetFlags(log.Ldate | log.Ltime | log.LUTC | log.Lshortfile)
 }
 
 func InitLogger(level logging.Level) {

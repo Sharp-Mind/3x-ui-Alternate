@@ -121,16 +121,10 @@ install_base() {
     esac
 }
 
-gen_random_string() {
-    local length="$1"
-    local random_string=$(LC_ALL=C tr -dc 'a-zA-Z0-9' < /dev/urandom | fold -w "$length" | head -n 1)
-    echo "$random_string"
-}
-
 # This function will be called when user installed x-ui out of security
 config_after_install() {
     echo -e "${yellow}Install/update finished! For security it's recommended to modify panel settings ${plain}"
-    read -p "Would you like to customize the panel settings? (If not, random settings will be applied) [y/n]: " config_confirm
+    read -p "Do you want to continue with the modification [y/n]?": config_confirm
     if [[ "${config_confirm}" == "y" || "${config_confirm}" == "Y" ]]; then
         read -p "Please set up your username: " config_account
         echo -e "${yellow}Your username will be: ${config_account}${plain}"
@@ -152,7 +146,7 @@ config_after_install() {
         if [[ ! -f "/etc/x-ui/x-ui.db" ]]; then
             local usernameTemp=$(head -c 6 /dev/urandom | base64)
             local passwordTemp=$(head -c 6 /dev/urandom | base64)
-            local webBasePathTemp=$(gen_random_string 10)
+            local webBasePathTemp=$(head -c 6 /dev/urandom | base64)
             /usr/local/x-ui/x-ui setting -username ${usernameTemp} -password ${passwordTemp} -webBasePath ${webBasePathTemp}
             echo -e "This is a fresh installation, will generate random login info for security concerns:"
             echo -e "###############################################"
@@ -160,9 +154,9 @@ config_after_install() {
             echo -e "${green}Password: ${passwordTemp}${plain}"
             echo -e "${green}WebBasePath: ${webBasePathTemp}${plain}"
             echo -e "###############################################"
-            echo -e "${yellow}If you forgot your login info, you can type "x-ui settings" to check after installation${plain}"
+            echo -e "${red}If you forgot your login info, you can type x-ui and then type 8 to check after installation${plain}"
         else
-            echo -e "${yellow}This is your upgrade, will keep old settings. If you forgot your login info, you can type "x-ui settings" to check${plain}"
+            echo -e "${red}This is your upgrade, will keep old settings. If you forgot your login info, you can type x-ui and then type 8 to check${plain}"
         fi
     fi
     /usr/local/x-ui/x-ui migrate
@@ -172,20 +166,20 @@ install_x-ui() {
     cd /usr/local/
 
     if [ $# == 0 ]; then
-        last_version=$(curl -Ls "https://api.github.com/repos/Sharp-Mind/3x-ui-alternate/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+        last_version=$(curl -Ls "https://api.github.com/repos/olardaniil/3x-ui/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
         if [[ ! -n "$last_version" ]]; then
             echo -e "${red}Failed to fetch x-ui version, it maybe due to Github API restrictions, please try it later${plain}"
             exit 1
         fi
         echo -e "Got x-ui latest version: ${last_version}, beginning the installation..."
-        wget -N --no-check-certificate -O /usr/local/x-ui-linux-$(arch).tar.gz https://github.com/Sharp-Mind/3x-ui-alternate/releases/download/${last_version}/x-ui-linux-$(arch).tar.gz
+        wget -N --no-check-certificate -O /usr/local/x-ui-linux-$(arch).tar.gz https://github.com/olardaniil/3x-ui/releases/download/${last_version}/x-ui-linux-$(arch).tar.gz
         if [[ $? -ne 0 ]]; then
             echo -e "${red}Downloading x-ui failed, please be sure that your server can access Github ${plain}"
             exit 1
         fi
     else
         last_version=$1
-        url="https://github.com/Sharp-Mind/3x-ui-alternate/releases/download/${last_version}/x-ui-linux-$(arch).tar.gz"
+        url="https://github.com/olardaniil/3x-ui/releases/download/${last_version}/x-ui-linux-$(arch).tar.gz"
         echo -e "Beginning to install x-ui $1"
         wget -N --no-check-certificate -O /usr/local/x-ui-linux-$(arch).tar.gz ${url}
         if [[ $? -ne 0 ]]; then
@@ -212,7 +206,7 @@ install_x-ui() {
 
     chmod +x x-ui bin/xray-linux-$(arch)
     cp -f x-ui.service /etc/systemd/system/
-    wget --no-check-certificate -O /usr/bin/x-ui https://raw.githubusercontent.com/Sharp-Mind/3x-ui-alternate/main/x-ui.sh
+    wget --no-check-certificate -O /usr/bin/x-ui https://raw.githubusercontent.com/olardaniil/3x-ui/main/x-ui.sh
     chmod +x /usr/local/x-ui/x-ui.sh
     chmod +x /usr/bin/x-ui
     config_after_install
@@ -224,21 +218,18 @@ install_x-ui() {
     echo -e ""
     echo -e "x-ui control menu usages: "
     echo -e "----------------------------------------------"
-    echo -e "SUBCOMMANDS:"
-    echo -e "x-ui              - Admin Management Script"
-    echo -e "x-ui start        - Start"
-    echo -e "x-ui stop         - Stop"
-    echo -e "x-ui restart      - Restart"
-    echo -e "x-ui status       - Current Status"
-    echo -e "x-ui settings     - Current Settings"
-    echo -e "x-ui enable       - Enable Autostart on OS Startup"
-    echo -e "x-ui disable      - Disable Autostart on OS Startup"
-    echo -e "x-ui log          - Check logs"
+    echo -e "x-ui              - Enter     Admin menu"
+    echo -e "x-ui start        - Start     x-ui"
+    echo -e "x-ui stop         - Stop      x-ui"
+    echo -e "x-ui restart      - Restart   x-ui"
+    echo -e "x-ui status       - Show      x-ui status"
+    echo -e "x-ui enable       - Enable    x-ui on system startup"
+    echo -e "x-ui disable      - Disable   x-ui on system startup"
+    echo -e "x-ui log          - Check     x-ui logs"
     echo -e "x-ui banlog       - Check Fail2ban ban logs"
-    echo -e "x-ui update       - Update"
-    echo -e "x-ui custom       - custom version"
-    echo -e "x-ui install      - Install"
-    echo -e "x-ui uninstall    - Uninstall"
+    echo -e "x-ui update       - Update    x-ui"
+    echo -e "x-ui install      - Install   x-ui"
+    echo -e "x-ui uninstall    - Uninstall x-ui"
     echo -e "----------------------------------------------"
 }
 

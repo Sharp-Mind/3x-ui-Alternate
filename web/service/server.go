@@ -133,8 +133,8 @@ func (s *ServerService) GetStatus(lastStatus *Status) *Status {
 	}
 
 	status.LogicalPro = runtime.NumCPU()
-	if p != nil && p.IsRunning() {
-		status.AppStats.Uptime = p.GetUptime()
+	if P != nil && P.IsRunning() {
+		status.AppStats.Uptime = P.GetUptime()
 	} else {
 		status.AppStats.Uptime = 0
 	}
@@ -238,8 +238,8 @@ func (s *ServerService) GetStatus(lastStatus *Status) *Status {
 
 	status.AppStats.Mem = rtm.Sys
 	status.AppStats.Threads = uint32(runtime.NumGoroutine())
-	if p != nil && p.IsRunning() {
-		status.AppStats.Uptime = p.GetUptime()
+	if P != nil && P.IsRunning() {
+		status.AppStats.Uptime = P.GetUptime()
 	} else {
 		status.AppStats.Uptime = 0
 	}
@@ -312,16 +312,6 @@ func (s *ServerService) downloadXRay(version string) (string, error) {
 		arch = "64"
 	case "arm64":
 		arch = "arm64-v8a"
-	case "armv7":
-		arch = "arm32-v7a"
-	case "armv6":
-		arch = "arm32-v6"
-	case "armv5":
-		arch = "arm32-v5"
-	case "386":
-		arch = "32"
-	case "s390x":
-		arch = "s390x"
 	}
 
 	fileName := fmt.Sprintf("Xray-%s-%s.zip", osName, arch)
@@ -407,7 +397,7 @@ func (s *ServerService) GetLogs(count string, level string, syslog string) []str
 	var lines []string
 
 	if syslog == "true" {
-		cmdArgs := []string{"journalctl", "-u", "x-ui", "--no-pager", "-n", count, "-p", level}
+		cmdArgs := []string{"journalctl", "-u", "x-ui", "--no-pager", "-n", count, "-P", level}
 		// Run the command
 		cmd := exec.Command(cmdArgs[0], cmdArgs[1:]...)
 		var out bytes.Buffer

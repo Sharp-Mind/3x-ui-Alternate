@@ -105,7 +105,7 @@ func (a *ServerController) stopXrayService(c *gin.Context) {
 		jsonMsg(c, "", err)
 		return
 	}
-	jsonMsg(c, "Xray stopped", err)
+	jsonMsg(c, "Xray stoped", err)
 }
 
 func (a *ServerController) restartXrayService(c *gin.Context) {

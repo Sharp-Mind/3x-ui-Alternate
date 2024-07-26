@@ -64,59 +64,52 @@ func (t *Tgbot) GetHashStorage() *global.HashStorage {
 }
 
 func (t *Tgbot) Start(i18nFS embed.FS) error {
-	// Initialize localizer
 	err := locale.InitLocalizer(i18nFS, &t.settingService)
 	if err != nil {
 		return err
 	}
 
-	// Initialize hash storage to store callback queries
+	// init hash storage => store callback queries
 	hashStorage = global.NewHashStorage(20 * time.Minute)
 
 	t.SetHostname()
-
-	// Get Telegram bot token
-	tgBotToken, err := t.settingService.GetTgBotToken()
-	if err != nil || tgBotToken == "" {
-		logger.Warning("Failed to get Telegram bot token:", err)
+	tgBottoken, err := t.settingService.GetTgBotToken()
+	if err != nil || tgBottoken == "" {
+		logger.Warning("Get TgBotToken failed:", err)
 		return err
 	}
 
-	// Get Telegram bot chat ID(s)
-	tgBotID, err := t.settingService.GetTgBotChatId()
+	tgBotid, err := t.settingService.GetTgBotChatId()
 	if err != nil {
-		logger.Warning("Failed to get Telegram bot chat ID:", err)
+		logger.Warning("Get GetTgBotChatId failed:", err)
 		return err
 	}
 
-	// Parse admin IDs from comma-separated string
-	if tgBotID != "" {
-		for _, adminID := range strings.Split(tgBotID, ",") {
-			id, err := strconv.Atoi(adminID)
+	if tgBotid != "" {
+		for _, adminId := range strings.Split(tgBotid, ",") {
+			id, err := strconv.Atoi(adminId)
 			if err != nil {
-				logger.Warning("Failed to parse admin ID from Telegram bot chat ID:", err)
+				logger.Warning("Failed to get IDs from GetTgBotChatId:", err)
 				return err
 			}
 			adminIds = append(adminIds, int64(id))
 		}
 	}
 
-	// Get Telegram bot proxy URL
 	tgBotProxy, err := t.settingService.GetTgBotProxy()
 	if err != nil {
-		logger.Warning("Failed to get Telegram bot proxy URL:", err)
+		logger.Warning("Failed to get ProxyUrl:", err)
 	}
 
-	// Create new Telegram bot instance
-	bot, err = t.NewBot(tgBotToken, tgBotProxy)
+	bot, err = t.NewBot(tgBottoken, tgBotProxy)
 	if err != nil {
-		logger.Error("Failed to initialize Telegram bot API:", err)
+		fmt.Println("Get tgbot's api error:", err)
 		return err
 	}
 
-	// Start receiving Telegram bot messages
+	// listen for TG bot income messages
 	if !isRunning {
-		logger.Info("Telegram bot receiver started")
+		logger.Info("Starting Telegram receiver ...")
 		go t.OnReceive()
 		isRunning = true
 	}
@@ -208,7 +201,7 @@ func (t *Tgbot) OnReceive() {
 	}, th.AnyCommand())
 
 	botHandler.HandleCallbackQuery(func(_ *telego.Bot, query telego.CallbackQuery) {
-		t.answerCallback(&query, checkAdmin(query.From.ID))
+		t.asnwerCallback(&query, checkAdmin(query.From.ID))
 	}, th.AnyCallbackQueryWithMessage())
 
 	botHandler.HandleMessage(func(_ *telego.Bot, message telego.Message) {
@@ -293,7 +286,7 @@ func (t *Tgbot) answerCommand(message *telego.Message, chatId int64, isAdmin boo
 	}
 }
 
-func (t *Tgbot) answerCallback(callbackQuery *telego.CallbackQuery, isAdmin bool) {
+func (t *Tgbot) asnwerCallback(callbackQuery *telego.CallbackQuery, isAdmin bool) {
 	chatId := callbackQuery.Message.GetChat().ID
 
 	if isAdmin {
@@ -971,7 +964,7 @@ func (t *Tgbot) getServerUsage(chatId int64, messageID ...int) string {
 	return info
 }
 
-// Send server usage without an inline keyboard
+// Send server usage without an inline keyborad
 func (t *Tgbot) sendServerUsage() string {
 	info := t.prepareServerUsageInfo()
 	return info
@@ -982,7 +975,7 @@ func (t *Tgbot) prepareServerUsageInfo() string {
 
 	// get latest status of server
 	t.lastStatus = t.serverService.GetStatus(t.lastStatus)
-	onlines := p.GetOnlineClients()
+	onlines := P.GetOnlineClients()
 
 	info += t.I18nBot("tgbot.messages.hostname", "Hostname=="+hostname)
 	info += t.I18nBot("tgbot.messages.version", "Version=="+config.GetVersion())
@@ -1026,7 +1019,7 @@ func (t *Tgbot) prepareServerUsageInfo() string {
 	return info
 }
 
-func (t *Tgbot) UserLoginNotify(username string, password string, ip string, time string, status LoginStatus) {
+func (t *Tgbot) UserLoginNotify(username string, ip string, time string, status LoginStatus) {
 	if !t.IsRunning() {
 		return
 	}
@@ -1044,12 +1037,11 @@ func (t *Tgbot) UserLoginNotify(username string, password string, ip string, tim
 	msg := ""
 	if status == LoginSuccess {
 		msg += t.I18nBot("tgbot.messages.loginSuccess")
-		msg += t.I18nBot("tgbot.messages.hostname", "Hostname=="+hostname)
 	} else if status == LoginFail {
 		msg += t.I18nBot("tgbot.messages.loginFailed")
-		msg += t.I18nBot("tgbot.messages.hostname", "Hostname=="+hostname)
-		msg += t.I18nBot("tgbot.messages.password", "Password=="+password)
 	}
+
+	msg += t.I18nBot("tgbot.messages.hostname", "Hostname=="+hostname)
 	msg += t.I18nBot("tgbot.messages.username", "Username=="+username)
 	msg += t.I18nBot("tgbot.messages.ip", "IP=="+ip)
 	msg += t.I18nBot("tgbot.messages.time", "Time=="+time)
@@ -1059,14 +1051,14 @@ func (t *Tgbot) UserLoginNotify(username string, password string, ip string, tim
 func (t *Tgbot) getInboundUsages() string {
 	info := ""
 	// get traffic
-	inbounds, err := t.inboundService.GetAllInbounds()
+	inbouds, err := t.inboundService.GetAllInbounds()
 	if err != nil {
 		logger.Warning("GetAllInbounds run failed:", err)
 		info += t.I18nBot("tgbot.answers.getInboundsFailed")
 	} else {
 		// NOTE:If there no any sessions here,need to notify here
 		// TODO:Sub-node push, automatic conversion format
-		for _, inbound := range inbounds {
+		for _, inbound := range inbouds {
 			info += t.I18nBot("tgbot.messages.inbound", "Remark=="+inbound.Remark)
 			info += t.I18nBot("tgbot.messages.port", "Port=="+strconv.Itoa(inbound.Port))
 			info += t.I18nBot("tgbot.messages.traffic", "Total=="+common.FormatTraffic((inbound.Up+inbound.Down)), "Upload=="+common.FormatTraffic(inbound.Up), "Download=="+common.FormatTraffic(inbound.Down))
@@ -1133,8 +1125,8 @@ func (t *Tgbot) clientInfoMsg(
 	}
 
 	status := t.I18nBot("tgbot.offline")
-	if p.IsRunning() {
-		for _, online := range p.GetOnlineClients() {
+	if P.IsRunning() {
+		for _, online := range P.GetOnlineClients() {
 			if online == traffic.Email {
 				status = t.I18nBot("tgbot.online")
 				break
@@ -1339,20 +1331,20 @@ func (t *Tgbot) searchClient(chatId int64, email string, messageID ...int) {
 }
 
 func (t *Tgbot) searchInbound(chatId int64, remark string) {
-	inbounds, err := t.inboundService.SearchInbounds(remark)
+	inbouds, err := t.inboundService.SearchInbounds(remark)
 	if err != nil {
 		logger.Warning(err)
 		msg := t.I18nBot("tgbot.wentWrong")
 		t.SendMsgToTgbot(chatId, msg)
 		return
 	}
-	if len(inbounds) == 0 {
+	if len(inbouds) == 0 {
 		msg := t.I18nBot("tgbot.noInbounds")
 		t.SendMsgToTgbot(chatId, msg)
 		return
 	}
 
-	for _, inbound := range inbounds {
+	for _, inbound := range inbouds {
 		info := ""
 		info += t.I18nBot("tgbot.messages.inbound", "Remark=="+inbound.Remark)
 		info += t.I18nBot("tgbot.messages.port", "Port=="+strconv.Itoa(inbound.Port))
@@ -1552,11 +1544,11 @@ func int64Contains(slice []int64, item int64) bool {
 }
 
 func (t *Tgbot) onlineClients(chatId int64, messageID ...int) {
-	if !p.IsRunning() {
+	if !P.IsRunning() {
 		return
 	}
 
-	onlines := p.GetOnlineClients()
+	onlines := P.GetOnlineClients()
 	onlinesCount := len(onlines)
 	output := t.I18nBot("tgbot.messages.onlinesCount", "Count=="+fmt.Sprint(onlinesCount))
 	keyboard := tu.InlineKeyboard(tu.InlineKeyboardRow(

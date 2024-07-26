@@ -164,7 +164,7 @@ config_after_install() {
 
 install_x-ui() {
     cd /usr/local/
-
+    // тест коммент
     if [ $# == 0 ]; then
         last_version=$(curl -Ls "https://api.github.com/repos/sharp-mind/3x-ui/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
         if [[ ! -n "$last_version" ]]; then

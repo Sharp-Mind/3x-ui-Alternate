@@ -14,7 +14,7 @@
 ## Install & Upgrade
 
 ```
-bash <(curl -Ls https://raw.githubusercontent.com/Sharp-Mind/3x-ui-alternate/main/install.sh)
+bash <(curl -Ls https://raw.githubusercontent.com/olardaniil/3x-ui/master/install.sh)
 ```
 
 ## SSL Certificate
